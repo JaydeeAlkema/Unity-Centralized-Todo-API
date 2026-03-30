@@ -12,20 +12,8 @@ builder.Services.AddSingleton<ITodoRepository, TodoStore>();
 
 var app = builder.Build();
 
-app.Use(SimpleMiddlewareTest());
-
 app.MapTodoEndpoints();
 
 app.MapGet("/", () => "Use /projects or /projects/{projectKey}/todos.");
 
 app.Run();
-
-static Func<HttpContext, RequestDelegate, Task> SimpleMiddlewareTest()
-{
-    return async (context, next) =>
-    {
-        Console.WriteLine($"Received {context.Request.Method} request for {context.Request.Path}");
-        await next(context);
-        Console.WriteLine($"Responded with status code {context.Response.StatusCode}");
-    };
-}
