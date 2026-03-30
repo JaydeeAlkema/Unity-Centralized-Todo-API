@@ -1,4 +1,4 @@
-namespace MyNewApp.Contracts;
+namespace UnityCentralizedTodoApi.Contracts;
 
 public sealed record ApiError(
     string Code,

@@ -1,4 +1,4 @@
-namespace MyNewApp.Contracts;
+namespace UnityCentralizedTodoApi.Contracts;
 
 public interface ITodoWriteRequest
 {

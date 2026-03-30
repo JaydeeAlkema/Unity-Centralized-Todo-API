@@ -1,8 +1,8 @@
 using System.Collections.Concurrent;
 using System.Threading;
-using MyNewApp.Domain;
+using UnityCentralizedTodoApi.Domain;
 
-namespace MyNewApp.Data;
+namespace UnityCentralizedTodoApi.Data;
 
 public sealed class TodoStore
 {

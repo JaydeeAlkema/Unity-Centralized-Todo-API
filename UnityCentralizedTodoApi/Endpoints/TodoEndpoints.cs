@@ -1,10 +1,10 @@
 using Microsoft.AspNetCore.Http.HttpResults;
-using MyNewApp.Contracts;
-using MyNewApp.Data;
-using MyNewApp.Domain;
-using MyNewApp.Validation;
+using UnityCentralizedTodoApi.Contracts;
+using UnityCentralizedTodoApi.Data;
+using UnityCentralizedTodoApi.Domain;
+using UnityCentralizedTodoApi.Validation;
 
-namespace MyNewApp.Endpoints;
+namespace UnityCentralizedTodoApi.Endpoints;
 
 public static class TodoEndpoints
 {

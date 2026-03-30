@@ -1,6 +1,6 @@
-using MyNewApp.Contracts;
+using UnityCentralizedTodoApi.Contracts;
 
-namespace MyNewApp.Validation;
+namespace UnityCentralizedTodoApi.Validation;
 
 public sealed class PositiveIdFilter : IEndpointFilter
 {

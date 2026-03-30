@@ -21,7 +21,7 @@ public sealed class TodoDueDateNotPastFilter<TRequest> : IEndpointFilter where T
                 message: "The DueDate cannot be in the past.",
                 field: "DueDate");
             var result = TypedResults.BadRequest(apiError);
-
+            
             return ValueTask.FromResult<object?>(result);
         }
 
