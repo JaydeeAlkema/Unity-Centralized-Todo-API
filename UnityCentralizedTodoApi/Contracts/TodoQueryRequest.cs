@@ -8,5 +8,5 @@ public sealed class TodoQueryRequest
     public DateTime? DueTo { get; init; }
     public string? Search { get; init; }
     public string? SortBy { get; init; }
-    public bool Descending { get; init; }
+    public bool? Descending { get; init; }
 }

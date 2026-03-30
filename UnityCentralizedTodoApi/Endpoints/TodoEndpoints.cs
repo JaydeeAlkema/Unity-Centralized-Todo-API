@@ -45,7 +45,7 @@ public static class TodoEndpoints
                 DueTo: query.DueTo?.ToUniversalTime(),
                 Search: string.IsNullOrWhiteSpace(query.Search) ? null : query.Search.Trim(),
                 SortBy: TodoParsing.ParseSortByOrDefault(query.SortBy),
-                Descending: query.Descending);
+                Descending: query.Descending ?? false);
 
             return TypedResults.Ok(repository.Query(projectKey, todoQuery));
         })

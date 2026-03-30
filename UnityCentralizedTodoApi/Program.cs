@@ -17,3 +17,6 @@ app.MapTodoEndpoints();
 app.MapGet("/", () => "Use /projects or /projects/{projectKey}/todos.");
 
 app.Run();
+
+// Needed so WebApplicationFactory<Program> in the test project can reference this assembly.
+public partial class Program { }
