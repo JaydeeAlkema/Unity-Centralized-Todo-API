@@ -1,0 +1,121 @@
+@baseUrl = http://localhost:5186
+
+# Standardized error shape (for Unity/client parsing):
+# {
+#   "code": "...",
+#   "message": "...",
+#   "field": "...",
+#   "status": 400,
+#   "traceId": "..."
+# }
+
+# Baseline
+GET {{baseUrl}}/
+
+###
+
+GET {{baseUrl}}/todos
+
+###
+
+# Rewrite middleware check (/tasks -> /todos)
+GET {{baseUrl}}/tasks/
+
+###
+
+# Create todo (expected: 201)
+POST {{baseUrl}}/todos
+Content-Type: application/json
+
+{
+	"name": "Buy groceries",
+	"dueDate": "2026-04-30T17:00:00",
+	"isComplete": false
+}
+
+###
+
+# Read created todo (expected: 200)
+GET {{baseUrl}}/todos/1
+
+###
+
+# Update todo (expected: 200)
+PUT {{baseUrl}}/todos/1
+Content-Type: application/json
+
+{
+	"name": "Buy groceries and cook dinner",
+	"dueDate": "2026-04-30T18:00:00",
+	"isComplete": false
+}
+
+###
+
+# Validation: empty name (expected: 400, code: validation.name_required)
+POST {{baseUrl}}/todos
+Content-Type: application/json
+
+{
+	"name": "   ",
+	"dueDate": "2026-04-30T17:00:00",
+	"isComplete": false
+}
+
+###
+
+# Validation: due date in the past (expected: 400, code: validation.due_date_past)
+POST {{baseUrl}}/todos
+Content-Type: application/json
+
+{
+	"name": "Past date test",
+	"dueDate": "2020-01-01T00:00:00Z",
+	"isComplete": false
+}
+
+###
+
+# Validation: id must be positive (expected: 400, code: validation.id_non_positive)
+GET {{baseUrl}}/todos/0
+
+###
+
+# Delete todo (expected: 204)
+DELETE {{baseUrl}}/todos/1
+
+###
+
+# Not found after delete (expected: 404, code: resource.todo_not_found)
+GET {{baseUrl}}/todos/1
+
+###
+
+# Not found delete (expected: 404, code: resource.todo_not_found)
+DELETE {{baseUrl}}/todos/999
+
+###
+
+# Not found update (expected: 404, code: resource.todo_not_found)
+PUT {{baseUrl}}/todos/999
+Content-Type: application/json
+
+{
+	"name": "Update missing todo",
+	"dueDate": "2026-05-01T10:00:00",
+	"isComplete": true
+}
+
+###
+
+# Conflict sample (expected: 409, code: conflict.concurrent_update)
+# Note: this is hard to trigger manually; usually appears under concurrent PUT requests.
+# Keep this request as a reference for expected payload shape if conflict occurs.
+PUT {{baseUrl}}/todos/1
+Content-Type: application/json
+
+{
+	"name": "Potential concurrent update",
+	"dueDate": "2026-05-01T10:30:00",
+	"isComplete": true
+}
