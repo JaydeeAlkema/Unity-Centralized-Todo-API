@@ -1,29 +1,24 @@
-using Microsoft.AspNetCore.Rewrite;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using UnityCentralizedTodoApi.Data;
 using UnityCentralizedTodoApi.Endpoints;
 
 var builder = WebApplication.CreateBuilder(args);
-builder.Services.AddSingleton<TodoStore>();
+builder.Services.ConfigureHttpJsonOptions(options =>
+{
+    options.SerializerOptions.Converters.Add(new JsonStringEnumConverter(JsonNamingPolicy.CamelCase, allowIntegerValues: false));
+});
+builder.Services.AddSingleton<ITodoRepository, TodoStore>();
 
 var app = builder.Build();
 
-// redirect /tasks to /todos for better UX when users mistype the URL
-SetupRewriteMiddleware(app);
 app.Use(SimpleMiddlewareTest());
 
 app.MapTodoEndpoints();
 
-app.MapGet("/", () => "Hello World!");
+app.MapGet("/", () => "Use /projects or /projects/{projectKey}/todos.");
 
 app.Run();
-
-static void SetupRewriteMiddleware(WebApplication app)
-{
-    var rewriteOptions = new RewriteOptions()
-        .AddRedirect("tasks", "todos")
-        .AddRedirect("tasks/(.*)", "todos/$1");
-    app.UseRewriter(rewriteOptions);
-}
 
 static Func<HttpContext, RequestDelegate, Task> SimpleMiddlewareTest()
 {

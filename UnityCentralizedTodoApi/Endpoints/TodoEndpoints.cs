@@ -10,28 +10,50 @@ public static class TodoEndpoints
 {
     public static RouteGroupBuilder MapTodoEndpoints(this IEndpointRouteBuilder app)
     {
-        var routes = app.MapGroup("/todos");
+        var projectRoutes = app.MapGroup("/projects");
 
-        routes.MapPost("", Results<Created<Todo>, BadRequest<ApiError>> (CreateTodoRequest request, TodoStore store) =>
+        projectRoutes.MapGet("", (ITodoRepository repository) =>
         {
-            var createdTodo = store.Create(
+            return TypedResults.Ok(repository.GetProjects());
+        });
+
+        var todoRoutes = projectRoutes
+            .MapGroup("/{projectKey}/todos")
+            .AddEndpointFilter<ProjectKeyRouteFilter>();
+
+        todoRoutes.MapPost("", Results<Created<Todo>, BadRequest<ApiError>> (string projectKey, CreateTodoRequest request, ITodoRepository repository) =>
+        {
+            var createdTodo = repository.Create(
+                projectKey: projectKey,
                 name: request.Name.Trim(),
+                severity: ParseSeverity(request.Severity),
                 dueDate: request.DueDate,
                 isComplete: request.IsComplete);
 
-            return TypedResults.Created($"/todos/{createdTodo.Id}", createdTodo);
+            return TypedResults.Created($"/projects/{createdTodo.ProjectKey}/todos/{createdTodo.Id}", createdTodo);
         })
         .AddEndpointFilter<TodoNameRequiredFilter<CreateTodoRequest>>()
+        .AddEndpointFilter<TodoSeverityValidFilter<CreateTodoRequest>>()
         .AddEndpointFilter<TodoDueDateNotPastFilter<CreateTodoRequest>>();
 
-        routes.MapGet("", (TodoStore store) =>
+        todoRoutes.MapGet("", Results<Ok<IReadOnlyList<Todo>>, BadRequest<ApiError>> ([AsParameters] TodoQueryRequest query, string projectKey, ITodoRepository repository) =>
         {
-            return TypedResults.Ok(store.GetAll());
-        });
+            var todoQuery = new TodoQuery(
+                Severity: ParseOptionalSeverity(query.Severity),
+                IsComplete: query.IsComplete,
+                DueFrom: query.DueFrom?.ToUniversalTime(),
+                DueTo: query.DueTo?.ToUniversalTime(),
+                Search: string.IsNullOrWhiteSpace(query.Search) ? null : query.Search.Trim(),
+                SortBy: TodoParsing.ParseSortByOrDefault(query.SortBy),
+                Descending: query.Descending);
 
-        routes.MapGet("/{id:int}", Results<Ok<Todo>, NotFound<ApiError>> (int id, TodoStore store, HttpContext httpContext) =>
+            return TypedResults.Ok(repository.Query(projectKey, todoQuery));
+        })
+        .AddEndpointFilter<TodoQueryValidationFilter>();
+
+        todoRoutes.MapGet("/{id:int}", Results<Ok<Todo>, NotFound<ApiError>> (string projectKey, int id, ITodoRepository repository, HttpContext httpContext) =>
         {
-            return store.GetById(id) is { } todo
+            return repository.GetById(projectKey, id) is { } todo
                 ? TypedResults.Ok(todo)
                 : TypedResults.NotFound(ApiErrors.NotFound(
                     httpContext,
@@ -41,11 +63,13 @@ public static class TodoEndpoints
         })
         .AddEndpointFilter<PositiveIdFilter>();
 
-        routes.MapPut("/{id:int}", Results<Ok<Todo>, NotFound<ApiError>, BadRequest<ApiError>, Conflict<ApiError>> (int id, UpdateTodoRequest request, TodoStore store, HttpContext httpContext) =>
+        todoRoutes.MapPut("/{id:int}", Results<Ok<Todo>, NotFound<ApiError>, BadRequest<ApiError>, Conflict<ApiError>> (string projectKey, int id, UpdateTodoRequest request, ITodoRepository repository, HttpContext httpContext) =>
         {
-            var updateResult = store.TryUpdate(
+            var updateResult = repository.TryUpdate(
+                projectKey: projectKey,
                 id: id,
                 name: request.Name.Trim(),
+                severity: ParseSeverity(request.Severity),
                 dueDate: request.DueDate,
                 isComplete: request.IsComplete);
 
@@ -66,11 +90,12 @@ public static class TodoEndpoints
         })
         .AddEndpointFilter<PositiveIdFilter>()
         .AddEndpointFilter<TodoNameRequiredFilter<UpdateTodoRequest>>()
+        .AddEndpointFilter<TodoSeverityValidFilter<UpdateTodoRequest>>()
         .AddEndpointFilter<TodoDueDateNotPastFilter<UpdateTodoRequest>>();
 
-        routes.MapDelete("/{id:int}", Results<NoContent, NotFound<ApiError>> (int id, TodoStore store, HttpContext httpContext) =>
+        todoRoutes.MapDelete("/{id:int}", Results<NoContent, NotFound<ApiError>> (string projectKey, int id, ITodoRepository repository, HttpContext httpContext) =>
         {
-            if (!store.Delete(id))
+            if (!repository.Delete(projectKey, id))
             {
                 return TypedResults.NotFound(ApiErrors.NotFound(
                     httpContext,
@@ -83,6 +108,20 @@ public static class TodoEndpoints
         })
         .AddEndpointFilter<PositiveIdFilter>();
 
-        return routes;
+        return projectRoutes;
+    }
+
+    private static TodoSeverity ParseSeverity(string severity)
+    {
+        return TodoParsing.TryParseSeverity(severity, out var parsedSeverity)
+            ? parsedSeverity
+            : throw new InvalidOperationException("Severity should have been validated before parsing.");
+    }
+
+    private static TodoSeverity? ParseOptionalSeverity(string? severity)
+    {
+        return TodoParsing.TryParseSeverity(severity, out var parsedSeverity)
+            ? parsedSeverity
+            : null;
     }
 }

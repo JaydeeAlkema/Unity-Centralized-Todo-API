@@ -1,3 +1,3 @@
 namespace UnityCentralizedTodoApi.Contracts;
 
-public record CreateTodoRequest(string Name, DateTime DueDate, bool IsComplete) : ITodoWriteRequest;
+public record CreateTodoRequest(string Name, string Severity, DateTime DueDate, bool IsComplete) : ITodoWriteRequest;

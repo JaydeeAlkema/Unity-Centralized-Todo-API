@@ -1,4 +1,6 @@
 @baseUrl = http://localhost:5186
+@projectKey = unity-centralized-todo
+@otherProjectKey = another-unity-project
 
 # Standardized error shape (for Unity/client parsing):
 # {
@@ -14,38 +16,63 @@ GET {{baseUrl}}/
 
 ###
 
-GET {{baseUrl}}/todos
+GET {{baseUrl}}/projects
 
 ###
 
-# Rewrite middleware check (/tasks -> /todos)
-GET {{baseUrl}}/tasks/
+# Project-scoped list (expected: 200)
+GET {{baseUrl}}/projects/{{projectKey}}/todos
 
 ###
 
 # Create todo (expected: 201)
-POST {{baseUrl}}/todos
+POST {{baseUrl}}/projects/{{projectKey}}/todos
 Content-Type: application/json
 
 {
 	"name": "Buy groceries",
+	"severity": "high",
 	"dueDate": "2026-04-30T17:00:00",
 	"isComplete": false
 }
 
 ###
 
+# Create todo in another project to verify isolation (expected: 201)
+POST {{baseUrl}}/projects/{{otherProjectKey}}/todos
+Content-Type: application/json
+
+{
+	"name": "Fix shader warnings",
+	"severity": "medium",
+	"dueDate": "2026-05-02T11:00:00",
+	"isComplete": false
+}
+
+###
+
 # Read created todo (expected: 200)
-GET {{baseUrl}}/todos/1
+GET {{baseUrl}}/projects/{{projectKey}}/todos/1
+
+###
+
+# Filter by severity and completion state (expected: 200)
+GET {{baseUrl}}/projects/{{projectKey}}/todos?severity=high&isComplete=false&sortBy=dueDate
+
+###
+
+# Filter by due range and search text (expected: 200)
+GET {{baseUrl}}/projects/{{projectKey}}/todos?dueFrom=2026-04-01T00:00:00Z&dueTo=2026-05-01T00:00:00Z&search=groceries&sortBy=name
 
 ###
 
 # Update todo (expected: 200)
-PUT {{baseUrl}}/todos/1
+PUT {{baseUrl}}/projects/{{projectKey}}/todos/1
 Content-Type: application/json
 
 {
 	"name": "Buy groceries and cook dinner",
+	"severity": "critical",
 	"dueDate": "2026-04-30T18:00:00",
 	"isComplete": false
 }
@@ -53,11 +80,12 @@ Content-Type: application/json
 ###
 
 # Validation: empty name (expected: 400, code: validation.name_required)
-POST {{baseUrl}}/todos
+POST {{baseUrl}}/projects/{{projectKey}}/todos
 Content-Type: application/json
 
 {
 	"name": "   ",
+	"severity": "low",
 	"dueDate": "2026-04-30T17:00:00",
 	"isComplete": false
 }
@@ -65,43 +93,68 @@ Content-Type: application/json
 ###
 
 # Validation: due date in the past (expected: 400, code: validation.due_date_past)
-POST {{baseUrl}}/todos
+POST {{baseUrl}}/projects/{{projectKey}}/todos
 Content-Type: application/json
 
 {
 	"name": "Past date test",
+	"severity": "medium",
 	"dueDate": "2020-01-01T00:00:00Z",
 	"isComplete": false
 }
 
 ###
 
+# Validation: severity must be valid (expected: 400, code: validation.severity_invalid)
+POST {{baseUrl}}/projects/{{projectKey}}/todos
+Content-Type: application/json
+
+{
+	"name": "Severity test",
+	"severity": "urgent",
+	"dueDate": "2026-04-30T17:00:00Z",
+	"isComplete": false
+}
+
+###
+
+# Validation: project key must be valid (expected: 400, code: validation.project_key_invalid)
+GET {{baseUrl}}/projects/Invalid Key!/todos
+
+###
+
 # Validation: id must be positive (expected: 400, code: validation.id_non_positive)
-GET {{baseUrl}}/todos/0
+GET {{baseUrl}}/projects/{{projectKey}}/todos/0
+
+###
+
+# Validation: due range must be valid (expected: 400, code: validation.due_range_invalid)
+GET {{baseUrl}}/projects/{{projectKey}}/todos?dueFrom=2026-05-02T00:00:00Z&dueTo=2026-05-01T00:00:00Z
 
 ###
 
 # Delete todo (expected: 204)
-DELETE {{baseUrl}}/todos/1
+DELETE {{baseUrl}}/projects/{{projectKey}}/todos/1
 
 ###
 
 # Not found after delete (expected: 404, code: resource.todo_not_found)
-GET {{baseUrl}}/todos/1
+GET {{baseUrl}}/projects/{{projectKey}}/todos/1
 
 ###
 
 # Not found delete (expected: 404, code: resource.todo_not_found)
-DELETE {{baseUrl}}/todos/999
+DELETE {{baseUrl}}/projects/{{projectKey}}/todos/999
 
 ###
 
 # Not found update (expected: 404, code: resource.todo_not_found)
-PUT {{baseUrl}}/todos/999
+PUT {{baseUrl}}/projects/{{projectKey}}/todos/999
 Content-Type: application/json
 
 {
 	"name": "Update missing todo",
+	"severity": "low",
 	"dueDate": "2026-05-01T10:00:00",
 	"isComplete": true
 }
@@ -111,11 +164,12 @@ Content-Type: application/json
 # Conflict sample (expected: 409, code: conflict.concurrent_update)
 # Note: this is hard to trigger manually; usually appears under concurrent PUT requests.
 # Keep this request as a reference for expected payload shape if conflict occurs.
-PUT {{baseUrl}}/todos/1
+PUT {{baseUrl}}/projects/{{projectKey}}/todos/1
 Content-Type: application/json
 
 {
 	"name": "Potential concurrent update",
+	"severity": "high",
 	"dueDate": "2026-05-01T10:30:00",
 	"isComplete": true
 }
